@@ -1,0 +1,18 @@
+import { Navigate } from "react-router-dom";
+
+/**
+ * A wrapper component that requires authentication.
+ * If there is no token in localStorage, redirects to the Login page ("/").
+ * Otherwise, renders the child component.
+ */
+function ProtectedRoute({ children }) {
+  const token = localStorage.getItem("token");
+
+  if (!token) {
+    return <Navigate to="/" replace />;
+  }
+
+  return children;
+}
+
+export default ProtectedRoute;

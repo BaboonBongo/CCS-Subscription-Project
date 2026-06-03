@@ -1,0 +1,16 @@
+{
+  "Comment": "Waits 5 seconds then expires the user subscription",
+  "StartAt": "WaitSubscription",
+  "States": {
+    "WaitSubscription": {
+      "Type": "Wait",
+      "Seconds": 5,
+      "Next": "ExpireSubscription"
+    },
+    "ExpireSubscription": {
+      "Type": "Task",
+      "Resource": "REPLACE_WITH_EXPIRATION_LAMBDA_ARN",
+      "End": true
+    }
+  }
+}
