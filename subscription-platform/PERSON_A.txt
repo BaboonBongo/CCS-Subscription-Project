@@ -1,0 +1,168 @@
+=== FILE: PERSON_A.txt ===
+# PERSON A: Backend Core Maintenance Manual
+
+## 1. YOUR ROLE
+You manage appLambda — the main Express.js application handling user authentication and tier-gated content access.
+
+## 2. FILES YOU OWN
+- `backend/app-lambda/src/app.js`
+- `backend/app-lambda/src/lambda.js`
+- `backend/app-lambda/src/routes/auth.js`
+- `backend/app-lambda/src/routes/content.js`
+- `backend/app-lambda/src/routes/user.js`
+- `backend/app-lambda/src/middleware/verifyToken.js`
+- `backend/app-lambda/src/services/contentService.js`
+- `backend/app-lambda/src/services/userService.js`
+- `backend/app-lambda/src/utils/tierRank.js`
+- `backend/app-lambda/package.json`
+- `backend/app-lambda/.env.example`
+
+## 3. WHAT TO DO — DAY BY DAY
+
+### Day 1 & 2: Deploy appLambda
+
+The repository is already cloned and dependencies are installed. You need to deploy the existing code to AWS.
+
+Lambda is an AWS service that lets you run code without provisioning or managing servers. You just upload your zip file.
+
+FILE:
+backend/app-lambda/src/app.js
+
+ACTION:
+Verify the Express server setup
+
+REASON:
+Ensures the health check route exists
+
+CODE:
+const express = require("express");
+const app = express();
+app.use(express.json());
+app.use("/auth", require("./routes/auth"));
+app.use("/content", require("./routes/content"));
+app.get("/", (req, res) => res.json({ message: "Subscription Platform API" }));
+module.exports = app;
+
+FILE:
+backend/app-lambda/src/lambda.js
+
+ACTION:
+Verify the Lambda wrapper
+
+REASON:
+Wraps the Express app to run on AWS Lambda
+
+CODE:
+const serverlessExpress = require("@codegenie/serverless-express");
+const app = require("./app");
+exports.handler = serverlessExpress({ app });
+
+Step 1: Open your terminal.
+Step 2: Type `cd backend/app-lambda` and press Enter.
+Step 3: Type `zip -r appLambda.zip .` and press Enter.
+
+Step 4: 
+AWS Console
+→ Lambda
+→ Create function
+→ Author from scratch
+Name: `appLambda`
+Runtime: `Node.js 20.x`
+Create function
+
+Step 5: 
+AWS Console
+→ Lambda
+→ appLambda
+→ Code
+→ Upload from
+→ .zip file
+Select `appLambda.zip` and upload.
+
+Step 6:
+AWS Console
+→ Lambda
+→ appLambda
+→ Configuration
+→ General configuration
+→ Edit
+Change "Handler" to `src/lambda.handler`
+Save
+
+**How to test it:**
+Wait for Person D to set up API Gateway. Once set up, open the API Gateway URL in a browser.
+
+**How to verify it worked:**
+You should see `{"message": "Subscription Platform API"}` in your browser.
+
+**What information must be sent to teammates:**
+Confirm with your team that `appLambda` is deployed.
+
+### Day 3: Verify and Configure Auth Routes
+
+FILE:
+backend/app-lambda/src/routes/auth.js
+
+ACTION:
+Verify auth route implementation
+
+REASON:
+Handles JWT generation and user registration in DynamoDB
+
+CODE:
+const express = require("express");
+const bcrypt = require("bcryptjs");
+const jwt = require("jsonwebtoken");
+const { v4: uuidv4 } = require("uuid");
+const router = express.Router();
+const { DynamoDBClient } = require("@aws-sdk/client-dynamodb");
+const { DynamoDBDocumentClient, PutCommand, QueryCommand } = require("@aws-sdk/lib-dynamodb");
+const docClient = DynamoDBDocumentClient.from(new DynamoDBClient({ region: process.env.AWS_REGION }));
+
+router.post("/register", async (req, res) => {
+  const { email, password } = req.body;
+  const passwordHash = await bcrypt.hash(password, 10);
+  const user = { userId: uuidv4(), email, passwordHash, tier: "free", subStatus: "none" };
+  await docClient.send(new PutCommand({ TableName: process.env.USERS_TABLE, Item: user }));
+  res.status(201).json({ success: true, userId: user.userId });
+});
+
+router.post("/login", async (req, res) => {
+  const { email, password } = req.body;
+  const result = await docClient.send(new QueryCommand({
+    TableName: process.env.USERS_TABLE, IndexName: "email-index",
+    KeyConditionExpression: "email = :email", ExpressionAttributeValues: { ":email": email }
+  }));
+  const user = result.Items[0];
+  if (!user || !(await bcrypt.compare(password, user.passwordHash))) return res.status(401).json({ error: "Invalid" });
+  const token = jwt.sign({ userId: user.userId, email: user.email, tier: user.tier }, process.env.JWT_SECRET);
+  res.json({ success: true, token, user });
+});
+module.exports = router;
+
+Step 1:
+AWS Console
+→ Lambda
+→ appLambda
+→ Configuration
+→ Environment variables
+→ Edit
+
+Add:
+JWT_SECRET (a random string)
+AWS_REGION (ap-southeast-1)
+USERS_TABLE (Users)
+MEDIA_BUCKET (subscription-platform-media)
+CONTENT_TABLE (Content)
+Save
+
+**How to test it:**
+Use Postman to send a POST request to your API Gateway URL + `/auth/register` with JSON body `{"email": "test@example.com", "password": "123"}`.
+
+**How to verify it worked:**
+Expected output: `{ success: true, userId: "..." }`
+
+**What information must be sent to teammates:**
+Send the working API Gateway URL to Person D.
+
+=== END FILE ===

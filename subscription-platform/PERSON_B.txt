@@ -1,0 +1,208 @@
+=== FILE: PERSON_B.txt ===
+# PERSON B: Payment & Subscription Flow Maintenance Manual
+
+## 1. YOUR ROLE
+You manage the dummy payment Lambda (70/30 simulation), the subscription expiration Lambda, and the Step Functions state machine that connects them.
+
+## 2. FILES YOU OWN
+- `backend/payment-lambda/index.js`
+- `backend/payment-lambda/package.json`
+- `backend/payment-lambda/.env.example`
+- `backend/expiration-lambda/index.js`
+- `backend/expiration-lambda/package.json`
+- `backend/expiration-lambda/.env.example`
+- `infra/stepfunctions/subscription-expiration-workflow.json`
+
+## 3. WHAT TO DO — DAY BY DAY
+
+### Day 1 & 2: Deploy Expiration Lambda
+
+Lambda is an AWS service that runs your code without servers.
+SNS (Simple Notification Service) is an AWS service for sending messages to topics (like email lists).
+
+FILE:
+backend/expiration-lambda/index.js
+
+ACTION:
+Verify expiration logic
+
+REASON:
+Marks subscription as expired in DynamoDB and sends an SNS notification.
+
+CODE:
+const { DynamoDBClient } = require("@aws-sdk/client-dynamodb");
+const { DynamoDBDocumentClient, UpdateCommand } = require("@aws-sdk/lib-dynamodb");
+const { SNSClient, PublishCommand } = require("@aws-sdk/client-sns");
+const docClient = DynamoDBDocumentClient.from(new DynamoDBClient({ region: process.env.AWS_REGION }));
+const snsClient = new SNSClient({ region: process.env.AWS_REGION });
+
+exports.handler = async (event) => {
+  const { userId, email } = event;
+  await docClient.send(new UpdateCommand({
+    TableName: process.env.USERS_TABLE, Key: { userId },
+    UpdateExpression: "SET subStatus = :expired", ExpressionAttributeValues: { ":expired": "expired" }
+  }));
+  await snsClient.send(new PublishCommand({
+    TopicArn: process.env.SNS_TOPIC_ARN,
+    Message: JSON.stringify({ type: "SUBSCRIPTION_EXPIRED", email, userId })
+  }));
+  return { success: true };
+};
+
+Step 1: Open your terminal.
+Step 2: Type `cd backend/expiration-lambda` and press Enter.
+Step 3: Type `zip -r expLambda.zip .` and press Enter.
+
+Step 4: 
+AWS Console
+→ Lambda
+→ Create function
+→ Author from scratch
+Name: `expirationLambda`
+Runtime: `Node.js 20.x`
+Create function
+
+Step 5: 
+AWS Console
+→ Lambda
+→ expirationLambda
+→ Code
+→ Upload from
+→ .zip file
+Select `expLambda.zip` and upload.
+
+Step 6: 
+AWS Console
+→ Lambda
+→ expirationLambda
+→ Configuration
+→ Environment variables
+→ Edit
+
+Add:
+AWS_REGION (ap-southeast-1)
+USERS_TABLE (Users)
+SNS_TOPIC_ARN (paste the ARN Person C gave you)
+Save
+
+ARN (Amazon Resource Name) is AWS's unique identifier for a resource.
+
+**How to test it:**
+Wait for Step Functions to be deployed in Day 3.
+
+**What information must be sent to teammates:**
+Ask Person C for the `SNS_TOPIC_ARN`.
+
+### Day 3: Step Functions & Payment Lambda
+
+Step Functions is an AWS service that orchestrates Lambdas and adds delays (like a 5-second wait).
+
+FILE:
+infra/stepfunctions/subscription-expiration-workflow.json
+
+ACTION:
+Update Lambda ARN
+
+REASON:
+Points the workflow to your specific expirationLambda.
+
+CODE:
+{
+  "StartAt": "WaitSubscription",
+  "States": {
+    "WaitSubscription": { "Type": "Wait", "Seconds": 5, "Next": "ExpireSubscription" },
+    "ExpireSubscription": { "Type": "Task", "Resource": "REPLACE_WITH_EXPIRATION_LAMBDA_ARN", "End": true }
+  }
+}
+
+Step 1: Copy your expirationLambda's ARN from the top of the Lambda console.
+Step 2: Open `infra/stepfunctions/subscription-expiration-workflow.json` and replace `REPLACE_WITH_EXPIRATION_LAMBDA_ARN` with your actual ARN. Save the file.
+
+Step 3: 
+AWS Console
+→ Step Functions
+→ State machines
+→ Create state machine
+→ Blank
+Step 4: Go to the "Code" tab. Paste the updated JSON code.
+Step 5: Click Create. Name it `subscription-workflow`.
+Step 6: Copy the new State Machine ARN.
+
+FILE:
+backend/payment-lambda/index.js
+
+ACTION:
+Verify payment simulation logic
+
+REASON:
+Simulates payment, starts Step Functions, updates DynamoDB, and sends SNS.
+
+CODE:
+const { DynamoDBClient } = require("@aws-sdk/client-dynamodb");
+const { DynamoDBDocumentClient, UpdateCommand } = require("@aws-sdk/lib-dynamodb");
+const { SFNClient, StartExecutionCommand } = require("@aws-sdk/client-sfn");
+const { SNSClient, PublishCommand } = require("@aws-sdk/client-sns");
+const docClient = DynamoDBDocumentClient.from(new DynamoDBClient({ region: process.env.AWS_REGION }));
+const sfnClient = new SFNClient({ region: process.env.AWS_REGION });
+const snsClient = new SNSClient({ region: process.env.AWS_REGION });
+const corsHeaders = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "Content-Type" };
+
+exports.handler = async (event) => {
+  if (event.requestContext?.http?.method === "OPTIONS") return { statusCode: 200, headers: corsHeaders, body: "" };
+  const { userId, email, tier } = JSON.parse(event.body);
+  const success = Math.random() < 0.7;
+  if (success) {
+    await docClient.send(new UpdateCommand({
+      TableName: process.env.USERS_TABLE, Key: { userId },
+      UpdateExpression: "SET #tier = :tier, subStatus = :status",
+      ExpressionAttributeNames: { "#tier": "tier" }, ExpressionAttributeValues: { ":tier": tier, ":status": "active" }
+    }));
+    await sfnClient.send(new StartExecutionCommand({
+      stateMachineArn: process.env.STATE_MACHINE_ARN, name: `sub-${userId}-${Date.now()}`,
+      input: JSON.stringify({ userId, email, tier })
+    }));
+    await snsClient.send(new PublishCommand({ TopicArn: process.env.SNS_TOPIC_ARN, Message: JSON.stringify({ type: "PAYMENT_SUCCESS", email, userId }) }));
+  } else {
+    await snsClient.send(new PublishCommand({ TopicArn: process.env.SNS_TOPIC_ARN, Message: JSON.stringify({ type: "PAYMENT_FAILED", email, userId }) }));
+  }
+  return { statusCode: 200, headers: corsHeaders, body: JSON.stringify({ success }) };
+};
+
+Step 7: In terminal, type `cd ../payment-lambda`.
+Step 8: Type `zip -r payLambda.zip .`
+Step 9: 
+AWS Console
+→ Lambda
+→ Create function
+→ paymentLambda (Node.js 20.x)
+Step 10: Upload `payLambda.zip` in the Code tab.
+
+Step 11: 
+AWS Console
+→ Lambda
+→ paymentLambda
+→ Configuration
+→ Environment variables
+→ Edit
+
+Add:
+AWS_REGION (ap-southeast-1)
+USERS_TABLE (Users)
+STATE_MACHINE_ARN (paste the State Machine ARN you just copied)
+SNS_TOPIC_ARN (paste from Person C)
+Save
+
+**How to test it:**
+AWS Console
+→ Step Functions
+→ subscription-workflow
+→ Start execution
+Enter JSON: `{"userId": "1", "email": "test@test.com", "tier": "premium"}`
+
+**How to verify it worked:**
+Wait 5 seconds. The graph should turn green, indicating expirationLambda ran successfully.
+
+**What information must be sent to teammates:**
+Tell Person C that your SNS messages use types: `PAYMENT_SUCCESS`, `PAYMENT_FAILED`, `SUBSCRIPTION_EXPIRED`.
+
+=== END FILE ===
