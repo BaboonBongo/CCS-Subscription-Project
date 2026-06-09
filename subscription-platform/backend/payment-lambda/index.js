@@ -1,13 +1,67 @@
+const https = require("https");
 const { DynamoDBClient } = require("@aws-sdk/client-dynamodb");
 const { DynamoDBDocumentClient, UpdateCommand } = require("@aws-sdk/lib-dynamodb");
 const { SFNClient, StartExecutionCommand } = require("@aws-sdk/client-sfn");
-const { SNSClient, PublishCommand } = require("@aws-sdk/client-sns");
 
 // Initialize AWS SDK clients
 const dynamoClient = new DynamoDBClient({ region: process.env.AWS_REGION || "ap-southeast-1" });
 const docClient = DynamoDBDocumentClient.from(dynamoClient);
 const sfnClient = new SFNClient({ region: process.env.AWS_REGION || "ap-southeast-1" });
-const snsClient = new SNSClient({ region: process.env.AWS_REGION || "ap-southeast-1" });
+
+// Telegram Configuration
+const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
+const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID;
+
+function sendTelegram(text) {
+  if (!TELEGRAM_BOT_TOKEN || !TELEGRAM_CHAT_ID) {
+    console.log("Telegram credentials not configured. Skipping notification.");
+    return Promise.resolve();
+  }
+  return new Promise((resolve, reject) => {
+    const payload = JSON.stringify({
+      chat_id: TELEGRAM_CHAT_ID,
+      text: text,
+      parse_mode: "HTML",
+    });
+
+    const options = {
+      hostname: "api.telegram.org",
+      port: 443,
+      path: `/bot${TELEGRAM_BOT_TOKEN}/sendMessage`,
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Content-Length": Buffer.byteLength(payload),
+      },
+    };
+
+    const req = https.request(options, (res) => {
+      let data = "";
+      res.on("data", (chunk) => (data += chunk));
+      res.on("end", () => {
+        try {
+          const parsed = JSON.parse(data);
+          if (parsed.ok) {
+            resolve(parsed);
+          } else {
+            console.error("Telegram API error:", parsed.description);
+            resolve();
+          }
+        } catch (e) {
+          console.error("Failed to parse Telegram response:", data);
+          resolve();
+        }
+      });
+    });
+
+    req.on("error", (err) => {
+      console.error("Telegram request error:", err);
+      resolve();
+    });
+    req.write(payload);
+    req.end();
+  });
+}
 
 // CORS headers — required because this Lambda is called directly from the browser
 const corsHeaders = {
@@ -78,34 +132,29 @@ exports.handler = async (event) => {
       );
       console.log("Step Functions execution started");
 
-      // 3. Publish PAYMENT_SUCCESS to SNS
-      await snsClient.send(
-        new PublishCommand({
-          TopicArn: process.env.SNS_TOPIC_ARN,
-          Message: JSON.stringify({
-            type: "PAYMENT_SUCCESS",
-            email,
-            userId,
-          }),
-        })
-      );
-      console.log("PAYMENT_SUCCESS published to SNS");
+      // 3. Send Telegram Notification
+      const successMessage = `✅ <b>Subscription Activated!</b>\n\n` +
+        `Hello <b>${email}</b>,\n\n` +
+        `<b>Transaction Status:</b> true\n\n` +
+        `Your subscription has been successfully activated! 🎉\n` +
+        `You now have full access to your tier's content library.\n\n` +
+        `Thank you for subscribing to our platform.\n` +
+        `— <i>Subscription Platform Team</i>`;
+      await sendTelegram(successMessage);
+      console.log("Telegram notification sent for success path");
     } else {
       // --- FAILURE PATH ---
 
-      // Only publish PAYMENT_FAILED to SNS
-      // No DynamoDB update, no Step Functions execution
-      await snsClient.send(
-        new PublishCommand({
-          TopicArn: process.env.SNS_TOPIC_ARN,
-          Message: JSON.stringify({
-            type: "PAYMENT_FAILED",
-            email,
-            userId,
-          }),
-        })
-      );
-      console.log("PAYMENT_FAILED published to SNS");
+      // Send Telegram Notification
+      const failureMessage = `❌ <b>Payment Failed</b>\n\n` +
+        `Hello <b>${email}</b>,\n\n` +
+        `<b>Transaction Status:</b> false\n\n` +
+        `Unfortunately, your payment could not be processed at this time.\n` +
+        `Your subscription has <b>NOT</b> been activated.\n\n` +
+        `Please try again or use a different payment method.\n` +
+        `— <i>Subscription Platform Team</i>`;
+      await sendTelegram(failureMessage);
+      console.log("Telegram notification sent for failure path");
     }
 
     return {
