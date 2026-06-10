@@ -91,6 +91,10 @@ exports.handler = async (event) => {
   }
 
   try {
+    console.log("=== PAYMENT LAMBDA VERSION B TELEGRAM ===");
+    await sendTelegram("🚨 paymentLambda invoked");
+
+
     const { userId, email, tier } = JSON.parse(event.body);
 
     // 70/30 payment simulation
