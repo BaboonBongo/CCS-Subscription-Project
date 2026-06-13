@@ -6,21 +6,21 @@ function Register() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
-  const [successMsg, setSuccessMsg] = useState("");
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
   const handleRegister = async (e) => {
     e.preventDefault();
     setError("");
-    setSuccessMsg("");
     setLoading(true);
 
     try {
-      const data = await register(email, password);
-      setSuccessMsg(`Success! Created user ${data.userId}`);
-      // Show success message briefly, then redirect to login
-      setTimeout(() => navigate("/"), 2000);
+      await register(email, password);
+      
+      // Kirim pesan sukses ke halaman Login melalui state navigasi
+      navigate("/", { 
+        state: { message: "Registrasi berhasil! Silakan masuk menggunakan akun Anda." } 
+      });
     } catch (err) {
       setError(err.message);
     } finally {
@@ -59,7 +59,6 @@ function Register() {
           </div>
           
           {error && <div className="error-message">{error}</div>}
-          {successMsg && <div className="result-message success" style={{ marginTop: '1rem' }}>{successMsg}</div>}
           
           <button type="submit" className="btn btn-primary btn-full" disabled={loading} style={{ marginTop: '1rem' }}>
             {loading ? "Registering..." : "Register"}

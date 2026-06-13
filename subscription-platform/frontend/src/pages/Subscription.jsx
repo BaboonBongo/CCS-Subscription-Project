@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom"; // 🌟 TAMBAHAN: Untuk mengarahkan kembali setelah sukses
 import { subscribe, getStatus } from "../services/api";
 
 function Subscription() {
@@ -7,6 +8,7 @@ function Subscription() {
   const [result, setResult] = useState(null); // { success: boolean, message: string }
   const [count, setCount] = useState(null);
   
+  const navigate = useNavigate(); // 🌟 TAMBAHAN: Inisialisasi navigasi
   const user = JSON.parse(localStorage.getItem("user") || "{}");
 
   const handleSubscribe = async () => {
@@ -20,6 +22,9 @@ function Subscription() {
       if (data.success) {
         setResult({ success: true, message: "Payment successful! Subscription activated." });
         
+        // 🌟 TAMBAHAN: Simpan tier yang dipilih ke localStorage agar dibaca oleh Content.jsx
+        localStorage.setItem("active_subscription", tier);
+
         // Start 5 second countdown
         setCount(5);
         
@@ -45,7 +50,7 @@ function Subscription() {
     }
   };
 
-  // Handle countdown timer
+  // Handle countdown timer (Logika asli kelompokmu tetap utuh)
   useEffect(() => {
     if (count === null || count <= 0) return;
 
@@ -53,6 +58,10 @@ function Subscription() {
       setCount((prev) => {
         if (prev <= 1) {
           clearInterval(timer);
+          
+          // 🌟 TAMBAHAN: Begitu hitung mundur habis (0s), otomatis pindah ke halaman /content
+          navigate("/content");
+
           // Subscription just expired, refresh status in background
           getStatus().then(freshStatus => {
             localStorage.setItem("user", JSON.stringify({
@@ -68,7 +77,7 @@ function Subscription() {
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [count]);
+  }, [count, navigate, user]); // 🌟 TAMBAHAN: Menambahkan dependency navigate
 
   return (
     <div className="page-container">
@@ -82,14 +91,18 @@ function Subscription() {
           <div className="form-group" style={{ textAlign: "left" }}>
             <label>Select Tier</label>
             <select value={tier} onChange={(e) => setTier(e.target.value)}>
+              {/* Logika Asli Kelompok */}
               <option value="basic">Basic Tier</option>
               <option value="standard">Standard Tier</option>
               <option value="premium">Premium Tier</option>
+              {/* 🌟 TAMBAHAN: Pilihan baru agar nyambung dengan alur bercabang kita */}
+              <option value="TYPE A">Subscription TYPE A</option>
+              <option value="TYPE B">Subscription TYPE B</option>
             </select>
           </div>
 
           <button 
-            className={`btn btn-full ${tier === 'premium' ? 'btn-primary' : 'btn-success'}`}
+            className={`btn btn-full ${tier === 'premium' || tier === 'TYPE B' ? 'btn-primary' : 'btn-success'}`}
             onClick={handleSubscribe} 
             disabled={loading || (count !== null && count > 0)}
             style={{ marginTop: "1rem" }}
