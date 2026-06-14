@@ -4,9 +4,9 @@ const { DynamoDBDocumentClient, UpdateCommand } = require("@aws-sdk/lib-dynamodb
 const { SFNClient, StartExecutionCommand } = require("@aws-sdk/client-sfn");
 
 // Initialize AWS SDK clients
-const dynamoClient = new DynamoDBClient({ region: process.env.AWS_REGION || "ap-southeast-1" });
+const dynamoClient = new DynamoDBClient({ region: process.env.AWS_REGION || "us-east-1" });
 const docClient = DynamoDBDocumentClient.from(dynamoClient);
-const sfnClient = new SFNClient({ region: process.env.AWS_REGION || "ap-southeast-1" });
+const sfnClient = new SFNClient({ region: process.env.AWS_REGION || "us-east-1" });
 
 // Telegram Configuration
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
@@ -146,6 +146,11 @@ exports.handler = async (event) => {
         `— <i>Subscription Platform Team</i>`;
       await sendTelegram(successMessage);
       console.log("Telegram notification sent for success path");
+      return {
+        statusCode: 200,
+        headers: corsHeaders,
+        body: JSON.stringify({ success: true }),
+      };
     } else {
       // --- FAILURE PATH ---
 
@@ -159,13 +164,12 @@ exports.handler = async (event) => {
         `— <i>Subscription Platform Team</i>`;
       await sendTelegram(failureMessage);
       console.log("Telegram notification sent for failure path");
+      return {
+        statusCode: 200,
+        headers: corsHeaders,
+        body: JSON.stringify({ success: false }),
+      };
     }
-
-    return {
-      statusCode: 200,
-      headers: corsHeaders,
-      body: JSON.stringify({ success }),
-    };
   } catch (err) {
     console.error("Payment error:", err);
     return {
