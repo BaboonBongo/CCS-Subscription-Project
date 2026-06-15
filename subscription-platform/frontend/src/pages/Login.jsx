@@ -32,15 +32,12 @@ function Login() {
       console.log("Login sukses, mengecek status user:", data);
       
       // Ambil status tier user saat ini (untuk simulasi local storage/data backend)
-      // Catatan: Jika user baru daftar, biasanya nilai tier-nya kosong atau belum diset
       const userStatus = localStorage.getItem("subscription_status");
 
       if (!userStatus || userStatus === "" || userStatus === "none") {
-        // REVISI POIN 2 & 3: User baru/belum langganan langsung dipaksa ke halaman subscription plan
         console.log("User baru atau belum pilih plan, arahkan ke /subscription");
         navigate("/subscription");
       } else {
-        // REVISI POIN 2: Jika sudah memiliki akun/langganan dari awal, langsung ke content website
         console.log("User lama/sudah ada akun aktif, arahkan ke /content");
         navigate("/content");
       }
@@ -53,51 +50,159 @@ function Login() {
   };
 
   return (
-    <div className="auth-container">
-      <div className="auth-card">
-        <h1>Welcome Back</h1>
-        <p className="subtitle">Sign in to access your dashboard</p>
+    <div style={{
+      backgroundColor: "#090514", // Hitam keunguan pekat khas Spotify UI revisi
+      color: "#f3f4f6",
+      minHeight: "100vh",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      fontFamily: "sans-serif",
+      padding: "1.5rem"
+    }}>
+      <div style={{
+        backgroundColor: "#110b21", // Card background sedikit lebih terang dari base canvas
+        borderRadius: "16px",
+        padding: "2.5rem",
+        width: "100%",
+        maxWidth: "420px",
+        boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.5)",
+        border: "1px solid #1f1a2e"
+      }}>
+        
+        {/* LOGO BRAND BARU REVISI */}
+        <div style={{ textAlign: "center", marginBottom: "2rem" }}>
+          <h1 style={{ color: "#a78bfa", display: "inline-flex", alignItems: "center", gap: "0.5rem", fontSize: "2rem", margin: "0 0 0.5rem 0" }}>
+            🎵 SoundStream
+          </h1>
+          <p style={{ color: "#9ca3af", margin: 0, fontSize: "0.9rem" }}>
+            Sign in to start listening to your premium waves
+          </p>
+        </div>
 
         {/* Notifikasi Hijau dari Register */}
         {successNotif && (
-          <div className="result-message success" style={{ backgroundColor: '#10b981', color: '#fff', padding: '0.75rem', borderRadius: '0.375rem', marginBottom: '1rem', textAlign: 'center' }}>
+          <div style={{ 
+            backgroundColor: "#10b981", 
+            color: "#fff", 
+            padding: "0.75rem", 
+            borderRadius: "8px", 
+            marginBottom: "1.5rem", 
+            textAlign: "center",
+            fontSize: "0.85rem",
+            fontWeight: "bold"
+          }}>
             {successNotif}
           </div>
         )}
 
         <form onSubmit={handleLogin}>
-          <div className="form-group">
-            <label>Email</label>
+          {/* INPUT EMAIL STYLE MUSIC APP */}
+          <div style={{ marginBottom: "1.25rem" }}>
+            <label style={{ display: "block", marginBottom: "0.5rem", fontSize: "0.85rem", fontWeight: "600", color: "#9ca3af" }}>
+              Email Address
+            </label>
             <input 
               type="email" 
-              placeholder="user@example.com" 
+              placeholder="name@email.com" 
               value={email} 
               onChange={(e) => setEmail(e.target.value)} 
               required 
+              style={{
+                width: "100%",
+                padding: "0.75rem 1rem",
+                borderRadius: "8px",
+                backgroundColor: "#1c1435",
+                border: "1px solid #2d2254",
+                color: "#fff",
+                fontSize: "0.95rem",
+                outline: "none",
+                boxSizing: "border-box"
+              }}
+              onFocus={(e) => e.target.style.borderColor = "#a78bfa"}
+              onBlur={(e) => e.target.style.borderColor = "#2d2254"}
             />
           </div>
           
-          <div className="form-group">
-            <label>Password</label>
+          {/* INPUT PASSWORD */}
+          <div style={{ marginBottom: "1.5rem" }}>
+            <label style={{ display: "block", marginBottom: "0.5rem", fontSize: "0.85rem", fontWeight: "600", color: "#9ca3af" }}>
+              Password
+            </label>
             <input 
               type="password" 
               placeholder="••••••••" 
               value={password} 
               onChange={(e) => setPassword(e.target.value)} 
               required 
+              style={{
+                width: "100%",
+                padding: "0.75rem 1rem",
+                borderRadius: "8px",
+                backgroundColor: "#1c1435",
+                border: "1px solid #2d2254",
+                color: "#fff",
+                fontSize: "0.95rem",
+                outline: "none",
+                boxSizing: "border-box"
+              }}
+              onFocus={(e) => e.target.style.borderColor = "#a78bfa"}
+              onBlur={(e) => e.target.style.borderColor = "#2d2254"}
             />
           </div>
 
-          {error && <div className="error-message" style={{ color: '#ef4444', marginBottom: '1rem' }}>{error}</div>}
+          {/* NOTIFIKASI EROR */}
+          {error && (
+            <div style={{ 
+              color: "#ef4444", 
+              fontSize: "0.85rem", 
+              marginBottom: "1rem",
+              backgroundColor: "rgba(239, 68, 68, 0.1)",
+              padding: "0.5rem 0.75rem",
+              borderRadius: "6px",
+              border: "1px solid rgba(239, 68, 68, 0.2)"
+            }}>
+              ⚠️ {error}
+            </div>
+          )}
 
-          <button type="submit" className="btn btn-primary btn-full" disabled={loading} style={{ marginTop: '1rem' }}>
-            {loading ? "Logging in..." : "Login"}
+          {/* TOMBOL LOGIN PILL-SHAPED ala SPOTIFY */}
+          <button 
+            type="submit" 
+            disabled={loading} 
+            style={{ 
+              width: "100%",
+              padding: "0.85rem",
+              borderRadius: "30px", // Membuat tombol melengkung penuh (Pill-shaped)
+              backgroundColor: "#7c3aed", // Ungu premium cerah
+              color: "#fff",
+              border: "none",
+              fontSize: "1rem",
+              fontWeight: "bold",
+              cursor: loading ? "not-allowed" : "pointer",
+              transition: "background-color 0.2s, transform 0.1s",
+              boxShadow: "0 4px 12px rgba(124, 58, 237, 0.3)"
+            }}
+            onMouseEnter={(e) => { if(!loading) e.target.style.backgroundColor = "#6d28d9" }}
+            onMouseLeave={(e) => { if(!loading) e.target.style.backgroundColor = "#7c3aed" }}
+          >
+            {loading ? "Connecting to SoundStream..." : "Sign In"}
           </button>
         </form>
 
-        <div className="auth-link">
-          Don't have an account? <Link to="/register">Register here</Link>
+        {/* LINK REGISTER */}
+        <div style={{ 
+          textAlign: "center", 
+          marginTop: "1.5rem", 
+          fontSize: "0.85rem", 
+          color: "#9ca3af" 
+        }}>
+          New to SoundStream?{" "}
+          <Link to="/register" style={{ color: "#a78bfa", textDecoration: "none", fontWeight: "600" }}>
+            Create an account
+          </Link>
         </div>
+
       </div>
     </div>
   );

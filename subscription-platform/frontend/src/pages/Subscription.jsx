@@ -9,7 +9,6 @@ function Subscription() {
   const navigate = useNavigate();
   const user = JSON.parse(localStorage.getItem("user") || "{}");
 
-  // REVISI: Mengganti data konten benefit sesuai dengan screenshot tema streaming musik (image_90fee0.jpg)
   const tiers = [
     {
       id: "Starter",
@@ -93,7 +92,6 @@ function Subscription() {
     setResult(null);
 
     try {
-      // Menyesuaikan dengan ID baru "Starter" sebagai tier Free untuk bypass payment
       if (selectedTier === "Starter") {
         localStorage.setItem("active_subscription", "Starter");
         localStorage.setItem("subscription_status", "active");
@@ -109,7 +107,6 @@ function Subscription() {
         localStorage.setItem("active_subscription", selectedTier);
         localStorage.setItem("subscription_status", "active");
 
-        // Sinkronisasi status user di background
         try {
           const freshStatus = await getStatus();
           localStorage.setItem("user", JSON.stringify({
@@ -136,32 +133,34 @@ function Subscription() {
   };
 
   return (
-    <div style={{ backgroundColor: "#f8fafc", minHeight: "100vh", padding: "4rem 2rem" }}>
+    <div style={{ backgroundColor: "#090514", minHeight: "100vh", padding: "4rem 2rem", fontFamily: "sans-serif", color: "#f3f4f6" }}>
       <div style={{ maxWidth: "1200px", margin: "0 auto", textAlign: "center" }}>
         
-        <h2 style={{ fontSize: "2.5rem", fontWeight: "700", color: "#1e293b", marginBottom: "0.5rem" }}>
-          Choose Your Listening Experience
+        {/* HEADER BRANDING */}
+        <h2 style={{ fontSize: "2.5rem", fontWeight: "700", color: "#fff", marginBottom: "0.5rem" }}>
+          Choose Your Listening Waves
         </h2>
-        <p style={{ color: "#64748b", fontSize: "1.125rem", marginBottom: "3rem" }}>
-          Choose the plan that fits your current needs.
+        <p style={{ color: "#9ca3af", fontSize: "1.125rem", marginBottom: "3rem" }}>
+          Unlock lossless audio, unlimited skips, and group jam sessions.
         </p>
 
-        {/* Notifikasi Status Pembayaran */}
+        {/* NOTIFIKASI STATUS PEMBAYARAN */}
         {result && (
           <div style={{ 
             padding: "1rem", 
-            borderRadius: "0.5rem", 
+            borderRadius: "8px", 
             marginBottom: "2rem", 
             textAlign: "center",
-            fontWeight: "500",
-            backgroundColor: result.success ? "#d1fae5" : "#fee2e2",
-            color: result.success ? "#065f46" : "#991b1b"
+            fontWeight: "600",
+            backgroundColor: result.success ? "rgba(16, 185, 129, 0.15)" : "rgba(239, 68, 68, 0.15)",
+            color: result.success ? "#34d399" : "#f87171",
+            border: result.success ? "1px solid #10b981" : "1px solid #ef4444"
           }}>
             {result.message}
           </div>
         )}
 
-        {/* Responsive Pricing Grid Layout 4 Kolom Putih Bersih ala image_9101c4.jpg */}
+        {/* RESPONSIVE PRICING GRID LAYOUT 4 KOLOM STYLE SPOTIFY (DARK MODE) */}
         <div style={{ 
           display: "grid", 
           gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", 
@@ -172,68 +171,75 @@ function Subscription() {
             <div 
               key={plan.id}
               style={{
-                backgroundColor: "#ffffff",
-                borderRadius: "0.75rem",
+                backgroundColor: "#110b21", 
+                borderRadius: "16px",
                 padding: "2rem",
                 textAlign: "left",
                 display: "flex",
                 flexDirection: "column",
-                border: plan.popular ? "2px solid #2563eb" : "1px solid #e2e8f0",
+                border: plan.popular ? "2px solid #a78bfa" : "1px solid #1f1a2e", 
                 position: "relative",
-                boxShadow: "0 4px 6px -1px rgba(0,0,0,0.05)"
+                boxShadow: plan.popular ? "0 0 20px rgba(167, 139, 250, 0.2)" : "0 10px 25px -5px rgba(0, 0, 0, 0.3)",
+                transition: "transform 0.2s"
               }}
+              onMouseEnter={(e) => e.currentTarget.style.transform = "scale(1.02)"}
+              onMouseLeave={(e) => e.currentTarget.style.transform = "scale(1)"}
             >
+              {/* Lencana Recommended/Popular */}
               {plan.popular && (
                 <span style={{
                   position: "absolute",
                   top: "1rem",
                   right: "1rem",
-                  backgroundColor: "#dbeafe",
-                  color: "#2563eb",
+                  backgroundColor: "#7c3aed",
+                  color: "#ffffff",
                   padding: "0.25rem 0.75rem",
                   borderRadius: "9999px",
                   fontSize: "0.75rem",
-                  fontWeight: "600"
+                  fontWeight: "700",
+                  letterSpacing: "0.5px"
                 }}>
-                  Recommended
+                  RECOMMENDED
                 </span>
               )}
 
-              <h3 style={{ fontSize: "1.35rem", fontWeight: "700", color: "#0f172a", marginBottom: "0.5rem" }}>
+              <h3 style={{ fontSize: "1.35rem", fontWeight: "700", color: "#fff", marginBottom: "0.5rem" }}>
                 {plan.name}
               </h3>
               
               <div style={{ display: "flex", alignItems: "baseline", marginBottom: "0.25rem" }}>
-                <span style={{ fontSize: "2.25rem", fontWeight: "800", color: "#0f172a" }}>{plan.price}</span>
-                <span style={{ color: "#64748b", fontSize: "0.875rem", marginLeft: "0.25rem" }}>{plan.period}</span>
+                <span style={{ fontSize: "2.25rem", fontWeight: "800", color: "#fff" }}>{plan.price}</span>
+                <span style={{ color: "#9ca3af", fontSize: "0.875rem", marginLeft: "0.25rem" }}>{plan.period}</span>
               </div>
 
-              <p style={{ color: "#475569", fontSize: "0.875rem", marginBottom: "1.5rem", minHeight: "40px" }}>
+              <p style={{ color: "#9ca3af", fontSize: "0.875rem", marginBottom: "1.5rem", minHeight: "40px", lineHeight: "1.4" }}>
                 {plan.desc}
               </p>
 
-              {/* Tombol Subscribe per Tier */}
+              {/* TOMBOL SUBSCRIBE PILL-SHAPED PER TIER */}
               <button
                 onClick={() => handleSubscribe(plan.id)}
                 disabled={loading}
                 style={{
                   width: "100%",
-                  padding: "0.75rem",
-                  borderRadius: "0.375rem",
-                  fontWeight: "600",
-                  cursor: "pointer",
-                  border: "1px solid #2563eb",
-                  backgroundColor: plan.popular ? "#2563eb" : "transparent",
-                  color: plan.popular ? "#ffffff" : "#2563eb",
+                  padding: "0.8rem",
+                  borderRadius: "30px", 
+                  fontWeight: "bold",
+                  cursor: loading ? "not-allowed" : "pointer",
+                  border: "none",
+                  backgroundColor: plan.popular ? "#7c3aed" : "#2d2254", 
+                  color: "#ffffff",
                   marginBottom: "2rem",
-                  transition: "all 0.2s"
+                  fontSize: "0.95rem",
+                  boxShadow: plan.popular ? "0 4px 12px rgba(124, 58, 237, 0.3)" : "none"
                 }}
               >
                 {loading ? "Processing..." : plan.buttonText}
               </button>
 
-              <div style={{ borderTop: "1px solid #f1f5f9", paddingTop: "1.5rem", flexGrow: 1 }}>
-                <p style={{ fontSize: "0.875rem", fontWeight: "600", color: "#0f172a", marginBottom: "0.75rem" }}>
+              {/* LIST FITUR BENEFIT */}
+              <div style={{ borderTop: "1px solid #1f1a2e", paddingTop: "1.5rem", flexGrow: 1 }}>
+                <p style={{ fontSize: "0.875rem", fontWeight: "600", color: "#a78bfa", marginBottom: "0.75rem" }}>
                   Includes:
                 </p>
                 <ul style={{ listStyleType: "none", padding: 0, margin: 0 }}>
@@ -241,19 +247,21 @@ function Subscription() {
                     <li 
                       key={idx} 
                       style={{ 
-                        fontSize: "0.875rem", 
-                        color: "#475569", 
-                        marginBottom: "0.5rem",
+                        fontSize: "0.85rem", 
+                        color: "#e5e7eb", 
+                        marginBottom: "0.6rem",
                         display: "flex",
-                        alignItems: "flex-start"
+                        alignItems: "flex-start",
+                        lineHeight: "1.4"
                       }}
                     >
-                      <span style={{ color: "#10b981", marginRight: "0.5rem", fontWeight: "bold" }}>✓</span>
+                      <span style={{ color: "#a78bfa", marginRight: "0.5rem", fontWeight: "bold" }}>✓</span>
                       {benefit}
                     </li>
                   ))}
                 </ul>
               </div>
+
             </div>
           ))}
         </div>
