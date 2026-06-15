@@ -26,14 +26,24 @@ function Login() {
     setLoading(true);
 
     try {
-      // Memanggil fungsi login dummy kita
+      // Memanggil fungsi login dummy/API kita
       const data = await login(email, password);
       
-      console.log("Login sukses, user diarahkan ke halaman utama:", data);
+      console.log("Login sukses, mengecek status user:", data);
       
-      // Setelah sukses login, arahkan ke halaman utama (Dashboard / Content)
-      // Di halaman utama nanti, komponen akan mengecek getStatus() dan memunculkan tombol Subscribe
-      navigate("/content"); // Sesuaikan path ini dengan rute halaman utama Anda (misal: "/dashboard" atau "/content")
+      // Ambil status tier user saat ini (untuk simulasi local storage/data backend)
+      // Catatan: Jika user baru daftar, biasanya nilai tier-nya kosong atau belum diset
+      const userStatus = localStorage.getItem("subscription_status");
+
+      if (!userStatus || userStatus === "" || userStatus === "none") {
+        // REVISI POIN 2 & 3: User baru/belum langganan langsung dipaksa ke halaman subscription plan
+        console.log("User baru atau belum pilih plan, arahkan ke /subscription");
+        navigate("/subscription");
+      } else {
+        // REVISI POIN 2: Jika sudah memiliki akun/langganan dari awal, langsung ke content website
+        console.log("User lama/sudah ada akun aktif, arahkan ke /content");
+        navigate("/content");
+      }
       
     } catch (err) {
       setError(err.message || "Email atau password salah.");
