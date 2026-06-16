@@ -47,7 +47,7 @@ export async function subscribe(userId, email, tier) {
   try {
     // Menembak langsung ke AWS API Gateway milik tim backend kamu
     const response = await fetch(
-      "https://nxy7ykfna6.execute-api.us-east-1.amazonaws.com/subscribe",
+      "https://nxy7ykfna6.execute-api.us-east-1.amazonaws.com/dev/subscribe",
       {
         method: "POST",
         headers: {
