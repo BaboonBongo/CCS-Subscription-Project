@@ -46,6 +46,7 @@ function parsePayload(event) {
   return event || {};
 }
 
+// 🔥 FIXED: Telegram call with 3-second timeout
 async function sendTelegramMessage(message) {
   const token = process.env.TELEGRAM_BOT_TOKEN;
   const chatId = process.env.TELEGRAM_CHAT_ID;
@@ -55,6 +56,9 @@ async function sendTelegramMessage(message) {
     return;
   }
 
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 3000); // 3 seconds
+
   try {
     console.log("=== TELEGRAM START ===");
     const response = await fetch(
@@ -63,8 +67,10 @@ async function sendTelegramMessage(message) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ chat_id: chatId, text: message }),
+        signal: controller.signal,
       }
     );
+    clearTimeout(timeoutId);
 
     const data = await response.json();
     console.log("Telegram response:", JSON.stringify(data));
@@ -74,7 +80,12 @@ async function sendTelegramMessage(message) {
       throw new Error(`Telegram API error: ${JSON.stringify(data)}`);
     }
   } catch (err) {
-    console.error("Telegram send failed:", err);
+    clearTimeout(timeoutId);
+    if (err.name === 'AbortError') {
+      console.warn("⏱️ Telegram request timed out after 3 seconds. Proceeding without notification.");
+    } else {
+      console.error("Telegram send failed:", err);
+    }
   }
 }
 
@@ -106,7 +117,6 @@ exports.handler = async (event) => {
     if (success) {
       console.log(">>> SUCCESS BRANCH");
 
-      // ✅ NO TRAILING SPACES IN DYNAMODB
       await docClient.send(
         new UpdateCommand({
           TableName: process.env.USERS_TABLE,
@@ -123,6 +133,7 @@ exports.handler = async (event) => {
 
       console.log("DynamoDB update successful");
 
+      // ✅ Now with timeout – will not block more than 3 seconds
       await sendTelegramMessage(
         `✅ Subscription Activated
 
