@@ -87,9 +87,22 @@ function Subscription() {
     }
   ];
 
-const handleSubscribe = async (selectedTier) => {
+  const handleSubscribe = async (selectedTier) => {
     setLoading(true);
     setResult(null);
+
+    // ========================================================
+    // PERUBAHAN DI SINI: Proteksi data kosong sebelum hit AWS
+    // ========================================================
+    if (!user || !user.userId || !user.email) {
+      setResult({ 
+        success: false, 
+        message: "⚠️ Sesi login tidak ditemukan / data user kosong. Silakan logout lalu login kembali sebelum memilih paket!" 
+      });
+      setLoading(false);
+      return;
+    }
+    // ========================================================
 
     try {
       if (selectedTier === "Starter") {
