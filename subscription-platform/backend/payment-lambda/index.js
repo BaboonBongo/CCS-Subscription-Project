@@ -4,14 +4,13 @@ const {
   UpdateCommand,
 } = require("@aws-sdk/lib-dynamodb");
 
-// AWS SDK clients
 const dynamoClient = new DynamoDBClient({
   region: process.env.AWS_REGION || "us-east-1",
 });
 
 const docClient = DynamoDBDocumentClient.from(dynamoClient);
 
-// CORS headers (Complete for both REST and HTTP APIs)
+// ✅ NO TRAILING SPACES
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "Content-Type,Authorization,X-Amz-Date,X-Api-Key,X-Amz-Security-Token",
@@ -19,30 +18,22 @@ const corsHeaders = {
   "Content-Type": "application/json",
 };
 
-// 🔥 FIX: Helper to get HTTP method from BOTH REST API (v1) and HTTP API (v2)
 function getHttpMethod(event) {
-  // HTTP API (v2) structure
   if (event.requestContext && event.requestContext.http) {
     return event.requestContext.http.method;
   }
-  // REST API (v1) structure
   if (event.httpMethod) {
     return event.httpMethod;
   }
   return null;
 }
 
-// Check if it's an API Gateway event (supports both v1 and v2)
 function isApiGatewayEvent(event) {
   return !!getHttpMethod(event);
 }
 
 function parsePayload(event) {
-  if (
-    event &&
-    Object.prototype.hasOwnProperty.call(event, "body") &&
-    event.body
-  ) {
+  if (event && Object.prototype.hasOwnProperty.call(event, "body") && event.body) {
     if (typeof event.body === "string") {
       try {
         return JSON.parse(event.body);
@@ -91,7 +82,6 @@ exports.handler = async (event) => {
   console.log("=== PAYMENT LAMBDA START ===");
   console.log("Received event:", JSON.stringify(event));
 
-  // 🔥 FIX: Use getHttpMethod to safely handle OPTIONS for both API types
   const method = getHttpMethod(event);
   if (isApiGatewayEvent(event) && method && method.toUpperCase() === "OPTIONS") {
     console.log(">>> HANDLING PREFLIGHT OPTIONS REQUEST SUCCESSFULLY");
@@ -116,6 +106,7 @@ exports.handler = async (event) => {
     if (success) {
       console.log(">>> SUCCESS BRANCH");
 
+      // ✅ NO TRAILING SPACES IN DYNAMODB
       await docClient.send(
         new UpdateCommand({
           TableName: process.env.USERS_TABLE,
