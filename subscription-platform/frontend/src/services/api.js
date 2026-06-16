@@ -1,26 +1,23 @@
-// ==========================================
-// 1. DUMMY LOGIN (DITAMBAH VALIDASI)
-// ==========================================
+// ============
+// 1. LOGIN
+// ============
 export async function login(email, password) {
   console.log("Mock Login SoundStream:", { email, password });
 
-  // Mengambil data yang tadi didaftarkan di halaman Register
   const registeredEmail = localStorage.getItem("registered_email");
   const registeredPassword = localStorage.getItem("registered_password");
 
-  // Akun master cadangan (supaya dosen/kamu bisa login instan tanpa register dulu)
   const masterEmail = "admin@dummy.com";
   const masterPassword = "password123";
 
-  // Logika pengecekan kecocokan akun
   if (
     (email === registeredEmail && password === registeredPassword) ||
     (email === masterEmail && password === masterPassword)
   ) {
     const dummy = {
       token: "dummy_jwt_token_12345",
-      // Menyimpan objek user utuh dalam bentuk string JSON agar aman dibaca di localstorage
-      user: { id: "user_dummy_99", email: email }
+      // --- PERUBAHAN DI SINI: "id" diubah menjadi "userId" agar cocok dengan AWS DynamoDB ---
+      user: { userId: "user_test_123", email: email } 
     };
     
     localStorage.setItem("token", dummy.token);
@@ -33,38 +30,62 @@ export async function login(email, password) {
   }
 }
 
-// ==========================================
-// 2. DUMMY REGISTER (DITAMBAH PENYIMPANAN DATA)
-// ==========================================
+// ==============
+// 2. REGISTER
+// ==============
 export async function register(email, password) {
-  // Menyimpan email dan password pendaftaran ke memori browser
   localStorage.setItem("registered_email", email);
   localStorage.setItem("registered_password", password);
 
   return { message: "Dummy User Registered Successfully!", success: true };
 }
 
-// ==========================================
-// 3. DUMMY SUBSCRIBE 
-// ==========================================
+// ====================================
+// 3. REAL AWS SUBSCRIBE INTERACTION
+// ====================================
 export async function subscribe(userId, email, tier) {
-  // Simulasi kegagalan pembayaran 30% untuk tantangan demonstrasi kelompok
-  const isSuccess = Math.random() > 0.3; 
-  return { success: isSuccess };
+  try {
+    // Menembak langsung ke AWS API Gateway milik tim backend kamu
+    const response = await fetch(
+      "https://nxy7ykfna6.execute-api.us-east-1.amazonaws.com/subscribe",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          userId: userId,
+          email: email,
+          tier: tier.toLowerCase(), // Diubah ke lowercase (starter/plus/premium) sesuai spek Lambda
+        }),
+      }
+    );
+
+    // Mengantisipasi jika terjadi Internal Server Error (HTTP 500) dari AWS
+    if (!response.ok && response.status === 500) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || "Terjadi kesalahan internal pada server AWS Lambda.");
+    }
+
+    // Mengembalikan data JSON hasil respons dari Lambda (success: true atau false)
+    return await response.json();
+  } catch (error) {
+    console.error("Gagal menyambungkan ke AWS Lambda:", error);
+    throw new Error(error.message || "Koneksi ke server backend gagal.");
+  }
 }
 
-// ==========================================
-// 4. DUMMY STATUS 
-// ==========================================
+// =============
+// 4. STATUS 
+// =============
 export async function getStatus() {
-  // Cek paket aktif milik user
   const savedTier = localStorage.getItem("active_subscription"); 
   const savedEmail = localStorage.getItem("user_email") || "guest@soundstream.com";
 
   return {
     success: true,
     email: savedEmail,
-    tier: savedTier || "Starter", // Default ke Starter (Free) jika kosong
+    tier: savedTier || "Starter", 
     status: savedTier ? "active" : "none"
   };
 }
@@ -72,7 +93,6 @@ export async function getStatus() {
 // ==========================================
 // 5. DUMMY KATALOG LAGU SOUNDSTREAM (REVISI TOTAL)
 // ==========================================
-// Mengganti video tutorial TYPE A/B menjadi metadata track lagu riil sesuai batasan tier
 export async function getContent() {
   return [
     { contentId: "m1", title: "Neon Pulse", artist: "ZARA-X", requiredTier: "Starter", type: "audio", quality: "128 kbps Standard" },
@@ -86,8 +106,9 @@ export async function getContent() {
 }
 
 // ==========================================
-// 6. DUMMY ACCESS URL 
+// 6. ACCESS URL UNTUK AUDIO PLAYER RIIL
 // ==========================================
 export async function accessContent(contentId) {
-  return { url: "https://example.com/dummy-music-stream-audio-file.mp3" };
+  return { 
+    url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3"};
 }

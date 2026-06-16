@@ -87,7 +87,7 @@ function Subscription() {
     }
   ];
 
-  const handleSubscribe = async (selectedTier) => {
+const handleSubscribe = async (selectedTier) => {
     setLoading(true);
     setResult(null);
 
@@ -102,7 +102,7 @@ function Subscription() {
       const data = await subscribe(user.userId, user.email, selectedTier);
       
       if (data.success) {
-        setResult({ success: true, message: "Payment successful! Activating subscription..." });
+        setResult({ success: true, message: `Payment successful! Activating ${selectedTier} tier...` });
         
         localStorage.setItem("active_subscription", selectedTier);
         localStorage.setItem("subscription_status", "active");
@@ -118,9 +118,26 @@ function Subscription() {
           console.error("Could not refresh status", e);
         }
 
+        // Pindahkan user ke halaman fasilitas konten premium setelah 1 detik
         setTimeout(() => {
           navigate("/content");
         }, 1000);
+
+        setTimeout(() => {
+          localStorage.setItem("active_subscription", "Starter");
+          localStorage.setItem("subscription_status", "active"); 
+          
+          // Membuka data user lama dan mengganti tier-nya secara presisi menggunakan spread operator (...)
+          localStorage.setItem("user", JSON.stringify({
+            ...user,
+            tier: "Starter",
+            subStatus: "active"
+          }));
+
+          alert("⏱️ Masa uji coba premium 5 detik Anda telah habis! Sistem mengembalikan Anda ke Free Tier.");
+          
+          window.location.reload(); 
+        }, 6000);
 
       } else {
         setResult({ success: false, message: "Payment failed (Simulated 30% failure). Please try again." });
