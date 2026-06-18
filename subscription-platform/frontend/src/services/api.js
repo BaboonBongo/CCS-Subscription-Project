@@ -17,13 +17,13 @@ export async function login(email, password) {
     const dummy = {
       token: "dummy_jwt_token_12345",
       // --- PERUBAHAN DI SINI: "id" diubah menjadi "userId" agar cocok dengan AWS DynamoDB ---
-      user: { userId: "user_test_123", email: email } 
+      user: { userId: "user_test_123", email: email }
     };
-    
+
     localStorage.setItem("token", dummy.token);
     localStorage.setItem("user", JSON.stringify(dummy.user));
-    localStorage.setItem("user_email", email); 
-    
+    localStorage.setItem("user_email", email);
+
     return dummy;
   } else {
     throw new Error("Login Gagal! Email belum terdaftar atau password salah.");
@@ -79,13 +79,13 @@ export async function subscribe(userId, email, tier) {
 // 4. STATUS 
 // =============
 export async function getStatus() {
-  const savedTier = localStorage.getItem("active_subscription"); 
+  const savedTier = localStorage.getItem("active_subscription");
   const savedEmail = localStorage.getItem("user_email") || "guest@soundstream.com";
 
   return {
     success: true,
     email: savedEmail,
-    tier: savedTier || "Starter", 
+    tier: savedTier || "Starter",
     status: savedTier ? "active" : "none"
   };
 }
@@ -109,6 +109,7 @@ export async function getContent() {
 // 6. ACCESS URL UNTUK AUDIO PLAYER RIIL
 // ==========================================
 export async function accessContent(contentId) {
-  return { 
-    url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3"};
+  return {
+    url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3"
+  };
 }
