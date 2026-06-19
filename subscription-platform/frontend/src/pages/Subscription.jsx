@@ -3,7 +3,6 @@ import { useNavigate } from "react-router-dom";
 import { subscribe, getStatus } from "../services/api";
 
 function Subscription() {
-  // --- REVISI UTAMA: Mengubah loading dari boolean menjadi string ID Tier yang sedang dipilih ---
   const [loadingTier, setLoadingTier] = useState(null);
   const [result, setResult] = useState(null); // { success: boolean, message: string }
 
@@ -89,7 +88,6 @@ function Subscription() {
   ];
 
   const handleSubscribe = async (selectedTier) => {
-    // Set tier mana yang saat ini sedang memproses data
     setLoadingTier(selectedTier);
     setResult(null);
 
@@ -106,11 +104,17 @@ function Subscription() {
       if (selectedTier === "Starter") {
         localStorage.setItem("active_subscription", "Starter");
         localStorage.setItem("subscription_status", "active");
+        localStorage.removeItem(`subscription_expired_${user.email}`);
+
+        // Update profile user ke Starter
+        const updatedUser = { ...user, tier: "Starter", subStatus: "active" };
+        localStorage.setItem("user", JSON.stringify(updatedUser));
+
         navigate("/content");
+        window.location.reload();
         return;
       }
 
-      // --- DISISIPKAN DI SINI: Jaring pengaman try-catch agar jika AWS Error langsung otomatis sukses simulasi ---
       let data;
       try {
         data = await subscribe(user.userId, user.email, selectedTier);
@@ -120,45 +124,34 @@ function Subscription() {
       }
 
       if (data.success) {
-        // Teks notifikasi menyesuaikan apakah lewat AWS asli atau mode backup demo
         const successMsg = data.isBackupMode
           ? `🎉 [Demo Mode] Activation successful for ${selectedTier} tier!`
           : `Payment successful! Activating ${selectedTier} tier...`;
 
         setResult({ success: true, message: successMsg });
 
+        // 1. Simpan status langganan utama
         localStorage.setItem("active_subscription", selectedTier);
         localStorage.setItem("subscription_status", "active");
 
-        try {
-          const freshStatus = await getStatus();
-          localStorage.setItem("user", JSON.stringify({
-            ...user,
-            tier: selectedTier,
-            subStatus: freshStatus.status
-          }));
-        } catch (e) {
-          console.error("Could not refresh status", e);
-        }
+        // 2. Set tanggal kedaluwarsa baru (+30 Hari) mengikat ke Email
+        const expiredDate = new Date();
+        expiredDate.setDate(expiredDate.getDate() + 30);
+        localStorage.setItem(`subscription_expired_${user.email}`, expiredDate.toISOString());
 
-        // Pindahkan user ke halaman fasilitas konten premium setelah 1 detik
+        // 3. PAKSA UPDATE seluruh data objek user agar tier langsung berubah di tempat
+        const updatedUser = {
+          ...user,
+          tier: selectedTier,
+          subStatus: "active"
+        };
+        localStorage.setItem("user", JSON.stringify(updatedUser));
+
+        // 4. Pindah ke dashboard dan segarkan halaman agar membaca data terbaru
         setTimeout(() => {
           navigate("/content");
-        }, 1000);
-
-        setTimeout(() => {
-          localStorage.setItem("active_subscription", "Starter");
-          localStorage.setItem("subscription_status", "active");
-
-          localStorage.setItem("user", JSON.stringify({
-            ...user,
-            tier: "Starter",
-            subStatus: "active"
-          }));
-
-          alert("⏱️ Masa uji coba premium 5 detik Anda telah habis! Sistem mengembalikan Anda ke Free Tier.");
           window.location.reload();
-        }, 6000);
+        }, 1000);
 
       } else {
         setResult({ success: false, message: "Payment failed (Simulated 30% failure). Please try again." });
@@ -166,7 +159,6 @@ function Subscription() {
     } catch (err) {
       setResult({ success: false, message: err.message || "An error occurred." });
     } finally {
-      // Proses selesai, matikan loading untuk tier tersebut
       setLoadingTier(null);
     }
   };
@@ -175,7 +167,6 @@ function Subscription() {
     <div style={{ backgroundColor: "#090514", minHeight: "100vh", padding: "4rem 2rem", fontFamily: "sans-serif", color: "#f3f4f6" }}>
       <div style={{ maxWidth: "1200px", margin: "0 auto", textAlign: "center" }}>
 
-        {/* HEADER BRANDING */}
         <h2 style={{ fontSize: "2.5rem", fontWeight: "700", color: "#fff", marginBottom: "0.5rem" }}>
           Choose Your Listening Waves
         </h2>
@@ -183,7 +174,6 @@ function Subscription() {
           Unlock lossless audio, unlimited skips, and group jam sessions.
         </p>
 
-        {/* NOTIFIKASI STATUS PEMBAYARAN */}
         {result && (
           <div style={{
             padding: "1rem",
@@ -199,7 +189,6 @@ function Subscription() {
           </div>
         )}
 
-        {/* RESPONSIVE PRICING GRID LAYOUT */}
         <div style={{
           display: "grid",
           gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
@@ -207,7 +196,6 @@ function Subscription() {
           alignItems: "stretch"
         }}>
           {tiers.map((plan) => {
-            // Cek status spesifik dari tombol kartu saat ini
             const isThisTierLoading = loadingTier === plan.id;
             const isAnyTierLoading = loadingTier !== null;
 
@@ -229,7 +217,6 @@ function Subscription() {
                 onMouseEnter={(e) => e.currentTarget.style.transform = "scale(1.02)"}
                 onMouseLeave={(e) => e.currentTarget.style.transform = "scale(1)"}
               >
-                {/* Lencana Recommended/Popular */}
                 {plan.popular && (
                   <span style={{
                     position: "absolute",
@@ -260,10 +247,9 @@ function Subscription() {
                   {plan.desc}
                 </p>
 
-                {/* REVISI UTAMA: Logika tombol yang presisi per Tier */}
                 <button
                   onClick={() => handleSubscribe(plan.id)}
-                  disabled={isAnyTierLoading} // Kunci semua tombol jika ada salah satu yang lagi loading
+                  disabled={isAnyTierLoading}
                   style={{
                     width: "100%",
                     padding: "0.8rem",
@@ -271,7 +257,6 @@ function Subscription() {
                     fontWeight: "bold",
                     cursor: isAnyTierLoading ? "not-allowed" : "pointer",
                     border: "none",
-                    // Mengubah warna tombol menjadi abu-abu jika dinonaktifkan
                     backgroundColor: isAnyTierLoading && !isThisTierLoading ? "#1f1933" : (plan.popular ? "#7c3aed" : "#2d2254"),
                     color: isAnyTierLoading && !isThisTierLoading ? "#6b7280" : "#ffffff",
                     marginBottom: "2rem",
@@ -282,7 +267,6 @@ function Subscription() {
                   {isThisTierLoading ? "Processing..." : plan.buttonText}
                 </button>
 
-                {/* LIST FITUR BENEFIT */}
                 <div style={{ borderTop: "1px solid #1f1a2e", paddingTop: "1.5rem", flexGrow: 1 }}>
                   <p style={{ fontSize: "0.875rem", fontWeight: "600", color: "#a78bfa", marginBottom: "0.75rem" }}>
                     Includes:
